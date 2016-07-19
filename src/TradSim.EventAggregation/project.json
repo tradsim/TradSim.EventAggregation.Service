@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0-*",
+  "buildOptions": {
+    "compilerName": "fsc",
+    "compile": {
+      "includeFiles": [
+        "EventAggregation.fs"
+      ]
+    }
+  },
+  "tools": {
+    "dotnet-compile-fsc": {
+      "version": "1.0.0-preview2-020000"
+    }
+  },
+  "frameworks": {
+    "netstandard1.6": {
+      "dependencies": {
+        "NETStandard.Library":"1.6.0",
+        "Microsoft.FSharp.Core.netcore": "1.0.0-alpha-160629",
+        "Newtonsoft.Json": "9.0.1"
+      }
+    }
+  }
+}

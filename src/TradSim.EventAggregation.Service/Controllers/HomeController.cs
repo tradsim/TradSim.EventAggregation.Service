@@ -10,6 +10,8 @@ namespace TradSim.EventAggregation.Service.Controllers
     {
         public IActionResult Index()
         {
+            Library.Say.hello("hello");
+
             return View();
         }
 
