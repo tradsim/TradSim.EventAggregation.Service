@@ -24,25 +24,19 @@ type Order = {
 }
 
 type Event = 
-    | OrderCreatePending of OrderID: Guid * Symbol: string * Price: decimal * Quantity:int * Direction: TradeDirection * Occured:DateTimeOffset * Version: int
-    | OrderCreated of OrderID: Guid * Occured:DateTimeOffset * Version: int
-    | OrderAmendPending of OrderID: Guid * Occured:DateTimeOffset * Version: int
-    | OrderAmended of OrderID: Guid * Occured:DateTimeOffset * Version: int
-    | OrderCancelPending of OrderID: Guid * Occured:DateTimeOffset * Version: int
+    | OrderCreated of OrderID: Guid * Symbol: string * Price: decimal * Quantity:int * Direction: TradeDirection * Occured:DateTimeOffset * Version: int
+    | OrderAmended of OrderID: Guid * Quantity: int * Occured:DateTimeOffset * Version: int
     | OrderCanceled of OrderID: Guid * Occured:DateTimeOffset * Version: int
     | OrderTraded of OrderID: Guid * Price: decimal * Quantity:int * Occured:DateTimeOffset * Version: int
 
 let apply item event = 
     match item, event with
-        | None,    OrderCreatePending(orderID,symbol,price,quantity,direction,occured,version)  -> { Id = orderID; Symbol = symbol; Price = price; Quantity = quantity; TradedQuantity = 0; Direction = direction; UserId = 1; Occured= occured; Status= OrderStatus.Pending; }
-        | None,    _                                                                            -> raise (ArgumentException("unknown event"))
-        | Some(i), OrderCreated(orderID,occured,version)                                        -> { i with Occured = occured; }        
-        | Some(i), OrderAmendPending(orderID,occured,version)                                   -> { i with Occured = occured; }
-        | Some(i), OrderAmended(orderID,occured,version)                                        -> { i with Occured = occured; }
-        | Some(i), OrderCancelPending(orderID,occured,version)                                  -> { i with Occured = occured; }
-        | Some(i), OrderCanceled(orderID,occured,version)                                       -> { i with Occured = occured; Status = OrderStatus.Cancelled }
-        | Some(i), OrderTraded(orderId,price,quantity,occured,version)                          -> { i with Occured = occured; TradedQuantity = i.TradedQuantity + quantity; Status = setOrderStatus i.Quantity (i.TradedQuantity + quantity) }        
-        | Some(i), _                                                                            -> i
+        | None,    OrderCreated(orderID,symbol,price,quantity,direction,occured,version)  -> { Id = orderID; Symbol = symbol; Price = price; Quantity = quantity; TradedQuantity = 0; Direction = direction; UserId = 1; Occured= occured; Status= OrderStatus.Pending; }
+        | None,    _                                                                      -> raise (ArgumentException("unknown event"))
+        | Some(i), OrderAmended(orderID, quantity, occured, version)                      -> { i with Occured = occured; Quantity = i.Quantity + quantity; Status = setOrderStatus (i.Quantity + quantity) i.TradedQuantity }
+        | Some(i), OrderCanceled(orderID,occured,version)                                 -> { i with Occured = occured; Status = OrderStatus.Cancelled }
+        | Some(i), OrderTraded(orderId,price,quantity,occured,version)                    -> { i with Occured = occured; TradedQuantity = i.TradedQuantity + quantity; Status = setOrderStatus i.Quantity (i.TradedQuantity + quantity) }        
+        | Some(i), _                                                                      -> i
 
 
 let aggregate events = 
