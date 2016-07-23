@@ -16,15 +16,14 @@ let ``Order with Create Pending Event Received Resulting To Pending``() =
 
     Assert.Equal(expected, actual.Value)
 
-// [<Fact>]
-// let ``Order with Invalid Event Received on empty Order Resulting In Exception``() =
-//     let id = Guid.NewGuid()
-//     let occured = DateTimeOffset.UtcNow
-//     let canceled = OrderCanceled(id, occured, 1 )
-//     let actual = seq { yield canceled } |> aggregate
+[<Fact>]
+let ``Order with Invalid Event Received on empty Order Resulting In Exception``() =
+    let id = Guid.NewGuid()
+    let occured = DateTimeOffset.UtcNow
+    let canceled = OrderCanceled(id, occured, 1 )
 
-//     let exc = Assert.Throws<ArgumentException>(fun () -> actual.Value |> ignore)
-//     Assert.Equal("unknown event",exc.Message)
+    let exc = Assert.Throws<ArgumentException>(fun () -> seq { yield canceled } |> aggregate |> ignore)
+    Assert.Equal("unknown event",exc.Message)
 
 [<Fact>] 
 let ``Order with Create Pending and Traded Event Received Resulting To PartiallyFilled``() =
