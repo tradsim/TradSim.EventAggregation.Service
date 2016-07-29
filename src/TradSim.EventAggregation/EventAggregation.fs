@@ -26,7 +26,7 @@ type Order = {
 }
 
 type Event = 
-    | OrderCreated of OrderId: Guid * Symbol: string * Price: decimal * Quantity:int * Direction: TradeDirection * Occured:DateTimeOffset * Version: int
+    | OrderAccepted of OrderId: Guid * Symbol: string * Price: decimal * Quantity:int * Direction: TradeDirection * Occured:DateTimeOffset * Version: int
     | OrderAmended of OrderId: Guid * Quantity: int * Occured:DateTimeOffset * Version: int
     | OrderCanceled of OrderId: Guid * Occured:DateTimeOffset * Version: int
     | OrderTraded of OrderId: Guid * Price: decimal * Quantity:int * Occured:DateTimeOffset * Version: int
@@ -55,7 +55,7 @@ let applyTrade order orderId price quantity occured  =
 
 let apply item event = 
     match item, event with
-        | None, OrderCreated(orderId,symbol,price,quantity,direction,occured,version)  -> createOrder orderId symbol price quantity direction occured
+        | None, OrderAccepted(orderId,symbol,price,quantity,direction,occured,version) -> createOrder orderId symbol price quantity direction occured
         | None, _                                                                      -> raise (ArgumentException("unknown event"))
         | Some(order), OrderAmended(orderId, quantity, occured, version)               -> amendOrder order occured quantity
         | Some(order), OrderCanceled(orderId,occured,version)                          -> cancelOrder order occured

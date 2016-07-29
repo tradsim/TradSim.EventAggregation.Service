@@ -11,7 +11,7 @@ let ``Order with Create Pending Event Received Resulting To Pending``() =
     let expected = {Id = id; Symbol = "TT"; Price= 10.0m; Quantity = 11; TradedQuantity = 0; 
                     Direction= TradeDirection.Buy; UserId =1; Occured= occured ; 
                     Status= OrderStatus.Pending; Trades= List.empty}
-    let created = OrderCreated(id, "TT", 10.0m, 11, TradeDirection.Buy, occured, 1 )
+    let created = OrderAccepted(id, "TT", 10.0m, 11, TradeDirection.Buy, occured, 1 )
     let actual = seq { yield created } |> aggregate
 
     Assert.Equal(expected, actual.Value)
@@ -33,7 +33,7 @@ let ``Order with Create Pending and Traded Event Received Resulting To Partially
     let expected = {Id = id; Symbol = "TT"; Price= 10.0m; Quantity = 11; TradedQuantity = 3; 
                     Direction= TradeDirection.Buy; UserId =1; Occured= occured ; Status= OrderStatus.PartiallyFilled
                     Trades= [trade] }
-    let created = OrderCreated(id, "TT", 10.0m, 11, TradeDirection.Buy, occured, 1 )
+    let created = OrderAccepted(id, "TT", 10.0m, 11, TradeDirection.Buy, occured, 1 )
     let traded = OrderTraded(trade.OrderId, trade.Price, trade.Quantity, trade.Occured, 1 )
     let actual = seq { yield created; yield traded } |> aggregate
 
@@ -48,7 +48,7 @@ let ``Order with Create Pending and Traded Events Received Resulting To FullyFil
     let expected = {Id = id; Symbol = "TT"; Price= 10.0m; Quantity = 11; TradedQuantity = 11; 
                     Direction= TradeDirection.Buy; UserId =1; Occured= occured ; 
                     Status= OrderStatus.FullyFilled; Trades= [trade1;trade2]}
-    let created = OrderCreated(id, "TT", 10.0m, 11, TradeDirection.Buy, DateTimeOffset.UtcNow, 1 )
+    let created = OrderAccepted(id, "TT", 10.0m, 11, TradeDirection.Buy, DateTimeOffset.UtcNow, 1 )
     let traded1 = OrderTraded(trade1.OrderId, trade1.Price, trade1.Quantity, trade1.Occured, 1 )
     let traded2 = OrderTraded(trade2.OrderId, trade2.Price, trade2.Quantity, trade2.Occured, 1 )
     let actual = seq { yield created; yield traded1; yield traded2 } |> aggregate
@@ -69,7 +69,7 @@ let ``Order with Create Pending and Traded Events Received Resulting To OverFill
     let expected = {Id = id; Symbol = "TT"; Price= 10.0m; Quantity = 11; TradedQuantity = 12; 
                     Direction= TradeDirection.Buy; UserId =1; Occured= occured ; 
                     Status= OrderStatus.FullyFilled; Trades= [trade1;trade2]}
-    let created = OrderCreated(id, "TT", 10.0m, 11, TradeDirection.Buy, DateTimeOffset.UtcNow, 1 )
+    let created = OrderAccepted(id, "TT", 10.0m, 11, TradeDirection.Buy, DateTimeOffset.UtcNow, 1 )
     let traded1 = OrderTraded(trade1.OrderId, trade1.Price, trade1.Quantity, trade1.Occured, 1 )
     let traded2 = OrderTraded(trade2.OrderId, trade2.Price, trade2.Quantity, trade2.Occured, 1 )
     let actual = seq { yield created; yield traded1; yield traded2 } |> aggregate
