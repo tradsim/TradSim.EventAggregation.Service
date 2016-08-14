@@ -21,11 +21,12 @@
           "type": "platform",
           "version": "1.0.0"
         },
-        "Microsoft.FSharp.Core.netcore": "1.0.0-alpha-160629"
+        "Microsoft.FSharp.Core.netcore": "1.0.0-alpha-160805"
       }
     }
   },
   "dependencies": {
+    "RabbitMQ.Client": "4.0.0-rc-1",
     "TradSim.EventAggregation": "1.0.0-*"
   }
 }
