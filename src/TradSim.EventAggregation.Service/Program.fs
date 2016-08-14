@@ -35,6 +35,12 @@ type OrderEventStored = {
     Version:   uint32
 }
 
+let rec exitLoop i = 
+    let char = Console.ReadKey()
+    match char.Key with
+    | ConsoleKey.Escape -> i
+    | _ -> exitLoop i
+
 let createFactory config =
     let factory = ConnectionFactory(HostName = config.Host, Port = config.Port, UserName = config.UserName, Password = config.Password)
     factory.AutomaticRecoveryEnabled <- true
@@ -67,12 +73,6 @@ let createConsumer channel =
             channel.BasicAck(result.DeliveryTag,false)      
     ))
     consumer
-
-let rec exitLoop i = 
-    let char = Console.ReadKey()
-    match char.Key with
-    | ConsoleKey.Escape -> i
-    | _ -> exitLoop i 
 
 [<EntryPoint>]
 let main argv = 
