@@ -16,8 +16,8 @@
   "frameworks": {
     "netstandard1.6": {
       "dependencies": {
-        "NETStandard.Library":"1.6.0",
-        "Microsoft.FSharp.Core.netcore": "1.0.0-alpha-160629"
+        "NETStandard.Library": "1.6.0",
+        "Microsoft.FSharp.Core.netcore": "1.0.0-alpha-160805"
       }
     }
   }
