@@ -5,6 +5,8 @@ open RabbitMQ.Client
 open RabbitMQ.Client.Events
 open System.Text
 open System.IO
+open Newtonsoft.Json
+open TradSim.EventAggregation
 
 type Config = {
     Host: string
@@ -17,6 +19,20 @@ type Config = {
 type QueueMessage = {
     Message: string
     DeliveryTag: uint64
+}
+
+type EventEnvelope = {
+    [<JsonProperty("event_type")>]
+    EventType: string
+    Payload:string
+}
+
+type OrderEventStored = {
+    [<JsonProperty("event_type")>]
+    EventType: string
+    Id:    Guid
+    Occured:   DateTimeOffset
+    Version:   uint32
 }
 
 let createFactory config =
@@ -37,13 +53,26 @@ let setupChannel exchange queue (connection: IConnection) =
     channel.QueueBind(queue, exchange, "")
     channel
 
-let readFromQueue queue (channel:IModel) =
-    let result = channel.BasicGet(queue, false)
-    if result <> null then
-            let message = Encoding.UTF8.GetString(result.Body)
-            Some {Message=message; DeliveryTag=result.DeliveryTag}
-        else
-            None
+let deserializeEnvelope (message:string) :EventEnvelope =
+    JsonConvert.DeserializeObject<EventEnvelope>(message)
+
+let deserializeEvent envelope : OrderEventStored =
+    JsonConvert.DeserializeObject<OrderEventStored>(envelope.Payload)
+
+let createConsumer channel =
+    let consumer = new EventingBasicConsumer(channel);
+    consumer.Received.Add((fun result ->
+            let event = deserializeEnvelope (Encoding.UTF8.GetString(result.Body))
+                        |> deserializeEvent
+            channel.BasicAck(result.DeliveryTag,false)      
+    ))
+    consumer
+
+let rec exitLoop i = 
+    let char = Console.ReadKey()
+    match char.Key with
+    | ConsoleKey.Escape -> i
+    | _ -> exitLoop i 
 
 [<EntryPoint>]
 let main argv = 
@@ -55,14 +84,8 @@ let main argv =
     use connection = createFactory config |> createConnection
     use channel = setupChannel exchange queue connection
 
-    let readFromEventStoredQueue = readFromQueue queue channel
-
-    while true do
-        let message = readFromEventStoredQueue
-        match message with
-        | Some(s) -> 
-            printfn "%s" s.Message
-            channel.BasicAck(s.DeliveryTag,true)
-        | _ -> ()
-
-    0 // return an integer exit code
+    let consumer = createConsumer channel
+    channel.BasicConsume(queue,false,consumer) |> ignore
+    
+    printf "Press [ESC] to exit"
+    exitLoop 0
