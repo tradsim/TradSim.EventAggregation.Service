@@ -28,6 +28,7 @@
   "dependencies": {
     "RabbitMQ.Client": "4.0.0-rc-1",
     "Newtonsoft.Json.NetCore": "9.0.2",
-    "TradSim.EventAggregation": "1.0.0-*"
+    "TradSim.EventAggregation": "1.0.0-*",
+    "TradSim.EventAggregation.Data": "1.0.0-*"
   }
 }

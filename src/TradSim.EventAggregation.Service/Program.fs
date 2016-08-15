@@ -7,6 +7,8 @@ open System.Text
 open System.IO
 open Newtonsoft.Json
 open TradSim.EventAggregation
+open Microsoft.EntityFrameworkCore;
+open TradSim.EventAggregation.Data;
 
 type Config = {
     Host: string
@@ -59,20 +61,28 @@ let setupChannel exchange queue (connection: IConnection) =
     channel.QueueBind(queue, exchange, "")
     channel
 
+let createDbContext (factory:EventContextFactory)=
+    factory.Create()
+
 let deserializeEnvelope (message:string) :EventEnvelope =
     JsonConvert.DeserializeObject<EventEnvelope>(message)
 
 let deserializeEvent envelope : OrderEventStored =
     JsonConvert.DeserializeObject<OrderEventStored>(envelope.Payload)
 
-let createConsumer channel =
+let createConsumer channel dbFactory =
     let consumer = new EventingBasicConsumer(channel);
     consumer.Received.Add((fun result ->
             let event = deserializeEnvelope (Encoding.UTF8.GetString(result.Body))
                         |> deserializeEvent
+            use ctx = createDbContext dbFactory
+
             channel.BasicAck(result.DeliveryTag,false)      
     ))
     consumer
+
+
+    
 
 [<EntryPoint>]
 let main argv = 
@@ -80,12 +90,14 @@ let main argv =
     let queue = "order_event_stored"
     let exchange = "order_event_stored"
     let config = { Host= "localhost"; Port= 5672; UserName= "guest"; Password= "guest"; VirtualHost= "tradsim" }
+    let connectionString = "User ID=postgres;Password=1234;Host=localhost;Port=5432;Database=orderevents;Pooling=true;"
 
     use connection = createFactory config |> createConnection
     use channel = setupChannel exchange queue connection
 
-    let consumer = createConsumer channel
+    let dbContextFactory = new EventContextFactory(connectionString)
+    let consumer = createConsumer channel dbContextFactory
     channel.BasicConsume(queue,false,consumer) |> ignore
-    
+
     printf "Press [ESC] to exit"
     exitLoop 0
