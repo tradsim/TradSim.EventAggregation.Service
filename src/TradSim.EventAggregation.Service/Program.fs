@@ -136,7 +136,7 @@ let deserializeOrderTraded (dbOrderEvent:DbOrderEvent) =
 
 let deserializeOrderEvent (dbOrderEvent:DbOrderEvent) =
     match dbOrderEvent.EventType with
-    | "OrderCreated"    -> deserializeOrderAccepted dbOrderEvent
+    | "OrderAccepted"   -> deserializeOrderAccepted dbOrderEvent
     | "OrderAmended"    -> deserializeOrderAmended dbOrderEvent
     | "OrderCancelled"  -> deserializeOrderCancelled dbOrderEvent
     | "OrderTraded"     -> deserializeOrderTraded dbOrderEvent
