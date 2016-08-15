@@ -5,7 +5,10 @@ open RabbitMQ.Client
 open RabbitMQ.Client.Events
 open System.Text
 open System.IO
+open System.Linq
+open System.Globalization
 open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 open TradSim.EventAggregation
 open Microsoft.EntityFrameworkCore;
 open TradSim.EventAggregation.Data;
@@ -61,28 +64,97 @@ let setupChannel exchange queue (connection: IConnection) =
     channel.QueueBind(queue, exchange, "")
     channel
 
+let createDbContextFactory connectionString=
+    new EventContextFactory(connectionString)    
+
 let createDbContext (factory:EventContextFactory)=
     factory.Create()
+
+let getEvents sourceId (dbContext:EventContext)=
+    let repo =new EventRepository(dbContext)
+    repo.Get(sourceId)
 
 let deserializeEnvelope (message:string) :EventEnvelope =
     JsonConvert.DeserializeObject<EventEnvelope>(message)
 
-let deserializeEvent envelope : OrderEventStored =
+let deserializeStoredEvent envelope : OrderEventStored =
     JsonConvert.DeserializeObject<OrderEventStored>(envelope.Payload)
+
+let toDirection value=
+    match value with
+    | "Buy" -> TradeDirection.Buy
+    | "Sell" -> TradeDirection.Sell
+    |  _ -> raise <| new ArgumentOutOfRangeException("value", value ,"Direction is invalid!")
+
+let sanitizeJSONString (value:string)=
+     value.Trim('"').Replace("\\\"","\"")
+
+let toGuid value=
+    Guid.Parse(value)
+
+let toDateTimeOffset (value:DateTime) =
+    DateTimeOffset(value,TimeSpan.Zero)
+
+let getJSONObject payload=
+    payload |> sanitizeJSONString |> JsonConvert.DeserializeObject :?> JObject
+
+let deserializeOrderAccepted (dbOrderEvent:DbOrderEvent) =
+    let event = getJSONObject dbOrderEvent.Payload
+    let id = toGuid (event.Value<string> "id")
+    let symbol = event.Value<string> "symbol"
+    let price = event.Value<decimal> "price"
+    let quantity = event.Value<uint32> "quantity"
+    let direction = toDirection (event.Value<string> "direction")
+    let occured = toDateTimeOffset (event.Value<DateTime> "occured")
+    let version = event.Value<uint32> "version"
+    OrderAccepted(id,symbol,price,quantity,direction,occured,version)
+    
+
+let deserializeOrderCancelled (dbOrderEvent:DbOrderEvent) =
+    let event = getJSONObject dbOrderEvent.Payload
+    let id = toGuid (event.Value<string> "id")
+    let occured = toDateTimeOffset (event.Value<DateTime> "occured")
+    let version = event.Value<uint32> "version"
+    OrderCancelled(id,occured,version)
+
+let deserializeOrderAmended (dbOrderEvent:DbOrderEvent) =
+    let event = getJSONObject dbOrderEvent.Payload
+    let id = toGuid (event.Value<string> "id")
+    let quantity = event.Value<uint32> "quantity"
+    let occured = toDateTimeOffset (event.Value<DateTime> "occured")
+    let version = event.Value<uint32> "version"
+    OrderAmended(id,quantity,occured,version)
+
+let deserializeOrderTraded (dbOrderEvent:DbOrderEvent) =
+    let event = getJSONObject dbOrderEvent.Payload
+    let id = toGuid (event.Value<string> "id")
+    let price = event.Value<decimal> "price"
+    let quantity = event.Value<uint32> "quantity"
+    let occured = toDateTimeOffset (event.Value<DateTime> "occured")
+    let version = event.Value<uint32> "version"
+    OrderTraded(id,price,quantity,occured,version)
+
+let deserializeOrderEvent (dbOrderEvent:DbOrderEvent) =
+    match dbOrderEvent.EventType with
+    | "OrderCreated"    -> deserializeOrderAccepted dbOrderEvent
+    | "OrderAmended"    -> deserializeOrderAmended dbOrderEvent
+    | "OrderCancelled"  -> deserializeOrderCancelled dbOrderEvent
+    | "OrderTraded"     -> deserializeOrderTraded dbOrderEvent
+    | _                 -> raise <| new ArgumentOutOfRangeException("dbOrderEvent.EventType", dbOrderEvent.EventType ,"EventType is invalid!")
 
 let createConsumer channel dbFactory =
     let consumer = new EventingBasicConsumer(channel);
     consumer.Received.Add((fun result ->
             let event = deserializeEnvelope (Encoding.UTF8.GetString(result.Body))
-                        |> deserializeEvent
+                        |> deserializeStoredEvent
             use ctx = createDbContext dbFactory
-
+            let order = getEvents event.Id ctx 
+                         |> Seq.map deserializeOrderEvent
+                         |> aggregate                        
+            printfn "%A" order
             channel.BasicAck(result.DeliveryTag,false)      
     ))
-    consumer
-
-
-    
+    consumer    
 
 [<EntryPoint>]
 let main argv = 
@@ -95,9 +167,8 @@ let main argv =
     use connection = createFactory config |> createConnection
     use channel = setupChannel exchange queue connection
 
-    let dbContextFactory = new EventContextFactory(connectionString)
-    let consumer = createConsumer channel dbContextFactory
+    let consumer = createConsumer channel (createDbContextFactory connectionString)
     channel.BasicConsume(queue,false,consumer) |> ignore
 
-    printf "Press [ESC] to exit"
+    printfn  "Press [ESC] to exit"
     exitLoop 0

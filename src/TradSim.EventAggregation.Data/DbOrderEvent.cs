@@ -2,7 +2,7 @@ using System;
 
 namespace  TradSim.EventAggregation.Data 
 {
-    public class OrderEvent
+    public class DbOrderEvent
     {
         public long Id {get;set;} // id
         public Guid SourceId { get; set; } //  source_id
